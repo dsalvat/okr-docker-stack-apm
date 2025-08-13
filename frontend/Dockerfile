@@ -2,7 +2,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
+# RUN npm ci
 COPY . .
 # ensure prod API path is /api to hit the nginx proxy (no CORS)
 RUN echo "VITE_API_BASE_URL=/api" > .env.production
