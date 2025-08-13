@@ -1,0 +1,11 @@
+# Frontend domain
+{$DOMAIN} {
+  encode gzip
+  reverse_proxy web:80
+}
+
+# API domain
+{$API_DOMAIN} {
+  encode gzip
+  reverse_proxy api:8000
+}

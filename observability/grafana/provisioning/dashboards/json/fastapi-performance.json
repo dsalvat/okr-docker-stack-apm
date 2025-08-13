@@ -1,0 +1,43 @@
+{
+  "id": null,
+  "title": "FastAPI Performance (OKR API)",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Request Rate (req/s)",
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{job=\"fastapi\"}[5m]))" }],
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate (5xx req/s)",
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{job=\"fastapi\", status=~\"5..\"}[5m]))" }],
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "P95 Latency (ms)",
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi\"}[5m])) by (le)) * 1000" }],
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0}
+    },
+    {
+      "type": "graph",
+      "title": "Latency p50/p95/p99 (ms)",
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi\"}[5m])) by (le)) * 1000" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi\"}[5m])) by (le)) * 1000" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi\"}[5m])) by (le)) * 1000" }
+      ],
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Requests by status",
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{job=\"fastapi\"}[5m])) by (status)" }],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 15}
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    labels:
+      - "promtail=true"
+    container_name: okr_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-okr_evaluator}
+      MYSQL_USER: ${MYSQL_USER:-okr}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-okrpass}
+    ports:
+      - "3306:3306"
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    labels:
+      - "promtail=true"
+    container_name: okr_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    labels:
+      - "promtail=true"
+    container_name: okr_api
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-okr}:${MYSQL_PASSWORD:-okrpass}@db:3306/${MYSQL_DATABASE:-okr_evaluator}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: gpt-4o-mini
+      CORS_ORIGINS: '["http://localhost:8080"]'
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_WINDOW_SECONDS: 60
+      RATE_LIMIT_MAX_REQUESTS: 60
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    labels:
+      - "promtail=true"
+    container_name: okr_web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: okr_loki
+    command: ["-config.file=/etc/loki/local-config.yml"]
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: okr_promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.4.5
+    container_name: okr_grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: okr_prometheus
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
+  redis_data:
+  loki_data:
+  grafana_data:
+  prom_data:
