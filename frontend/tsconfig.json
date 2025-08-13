@@ -5,13 +5,22 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "baseUrl": "."
+
+    /* 🔽 Aliases */
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+
+    /* 🔽 Permet compilar .js/.jsx si encara en tens */
+    "allowJs": true
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
