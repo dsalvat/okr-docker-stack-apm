@@ -1,0 +1,43 @@
+# Node modules
+node_modules/
+
+# Python virtual environments
+venv/
+.env/
+__pycache__/
+*.pyc
+
+# Docker volumes and data
+mysql_data/
+redis_data/
+loki_data/
+grafana_data/
+prom_data/
+
+# Logs
+*.log
+logs/
+*.out
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+
+# Build output
+dist/
+build/
+*.egg-info/
+
+# Frontend build artifacts
+frontend/dist/
+frontend/build/
+
+# Backend build
