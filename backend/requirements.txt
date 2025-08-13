@@ -10,3 +10,4 @@ mysqlclient==2.2.4
 redis==5.0.7
 prometheus-fastapi-instrumentator==7.0.0
 prometheus-client==0.20.0
+httpx==0.26.0
