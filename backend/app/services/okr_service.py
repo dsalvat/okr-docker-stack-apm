@@ -6,7 +6,7 @@ from app.db.session import SessionLocal
 from app.db.models import OkrSubmission, KeyResult
 
 async def evaluate_objective(objective: str):
-    # 🔥 PROMPT MEJORADO - MÁS DETALLADO Y VALIOSO
+    # 🔥 PROMPT PARA GENERAR EL JSON EXACTO
     json_prompt = f"""
 Eres un consultor experto en OKRs con 15 años de experiencia. Evalúa este objetivo empresarial: "{objective}"
 
@@ -55,86 +55,109 @@ REQUISITOS CRÍTICOS:
 - Responde SOLO el JSON, sin texto adicional antes o después
 """
 
-    # Mantener scoring heurístico existente para base de datos
+    # Scoring heurístico para base de datos
     heur = score_objective(objective)
     
-    # 🔥 NUEVA EVALUACIÓN JSON ESTRUCTURADA
+    # 🔥 LLAMADA ÚNICA Y SIMPLE
     try:
-        # Obtener evaluación JSON estructurada de la IA
-        json_response = await llm_feedback(json_prompt)
+        ai_response = await llm_feedback(json_prompt)
+        print(f"🔍 Respuesta IA cruda: {ai_response}")
         
-        # Intentar parsear como JSON
+        # 🔥 PARSEAR JSON DIRECTAMENTE
         try:
-            ai_evaluation = json.loads(json_response)
-        except json.JSONDecodeError:
-            # Si no es JSON válido, crear estructura por defecto
-            ai_evaluation = {
+            ai_data = json.loads(ai_response)
+            print(f"✅ JSON parseado exitosamente")
+            print(f"✅ Score: {ai_data.get('score')}")
+            print(f"✅ Feedback length: {len(ai_data.get('feedback', ''))}")
+            print(f"✅ Criteria keys: {list(ai_data.get('criteria', {}).keys())}")
+            print(f"✅ Suggestions count: {len(ai_data.get('suggestions', []))}")
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ Error parsing JSON: {e}")
+            print(f"❌ Respuesta que falló: {ai_response[:500]}...")
+            # Fallback simple
+            ai_data = {
                 "score": heur["total"],
-                "feedback": f"Evaluación técnica: Score {heur['total']}/10 basado en claridad, enfoque y redacción.",
+                "feedback": f"Error en análisis IA. Evaluación heurística: {heur['total']}/10 puntos.",
                 "criteria": {
-                    "specific": {"score": heur.get("clarity", 5), "comment": "Análisis de especificidad basado en heurística"},
-                    "measurable": {"score": heur.get("focus", 5), "comment": "Análisis de medibilidad basado en heurística"},
-                    "achievable": {"score": max(1, min(10, heur["total"] - 1)), "comment": "Análisis de factibilidad estimado"},
-                    "relevant": {"score": heur.get("focus", 5), "comment": "Análisis de relevancia basado en enfoque"},
-                    "timebound": {"score": heur.get("writing", 5), "comment": "Análisis temporal basado en redacción"}
+                    "specific": {"score": heur.get("clarity", 5), "comment": "Análisis automático basado en claridad"},
+                    "measurable": {"score": heur.get("focus", 5), "comment": "Análisis automático basado en enfoque"},
+                    "achievable": {"score": 5, "comment": "Análisis automático - requiere evaluación manual"},
+                    "relevant": {"score": heur.get("focus", 5), "comment": "Análisis automático basado en relevancia"},
+                    "timebound": {"score": heur.get("writing", 5), "comment": "Análisis automático basado en redacción"}
                 },
                 "suggestions": [
-                    "Mejorar la claridad del objetivo",
-                    "Añadir métricas específicas",
-                    "Definir timeline más concreto"
+                    "Revisar la especificidad del objetivo",
+                    "Añadir métricas cuantificables",
+                    "Evaluar la factibilidad con recursos disponibles",
+                    "Establecer timeline más detallado"
                 ]
             }
-        
-        # También obtener feedback tradicional para DB (mantener compatibilidad)
-        fb = await llm_feedback(f"Avalua OBJECTIU d'OKR i proposa millores. Text: '{objective}'. Notes: {', '.join(heur['notes']) or 'Sense notes'}")
-        
+            
     except Exception as e:
-        # En caso de error con IA, usar valores por defecto
-        ai_evaluation = {
+        print(f"❌ Error en llamada IA: {e}")
+        # Fallback de emergencia
+        ai_data = {
             "score": heur["total"],
-            "feedback": f"Error en evaluación IA. Score heurístico: {heur['total']}/10",
+            "feedback": f"Error en servicio de IA. Puntuación heurística: {heur['total']}/10.",
             "criteria": {
                 "specific": {"score": heur.get("clarity", 5), "comment": "Error en análisis específico"},
-                "measurable": {"score": heur.get("focus", 5), "comment": "Error en análisis de medibilidad"},
+                "measurable": {"score": heur.get("focus", 5), "comment": "Error en análisis de medición"},
                 "achievable": {"score": 5, "comment": "Error en análisis de factibilidad"},
                 "relevant": {"score": heur.get("focus", 5), "comment": "Error en análisis de relevancia"},
                 "timebound": {"score": heur.get("writing", 5), "comment": "Error en análisis temporal"}
             },
-            "suggestions": ["Error obteniendo sugerencias", "Intenta reformular el objetivo"]
+            "suggestions": [
+                "Error obteniendo sugerencias - revisar configuración",
+                "Contactar soporte técnico para análisis detallado"
+            ]
         }
-        fb = f"Error evaluando objetivo: {str(e)}"
-    
-    # Generar ID y guardar en DB (mantener funcionalidad existente)
+        ai_response = f"Error: {str(e)}"
+
+    # Guardar en base de datos
     okr_id = str(uuid.uuid4())
+    fb = ai_data.get("feedback", "Sin feedback")
+    
     with SessionLocal() as db:
         db.add(OkrSubmission(
-            id=okr_id, 
+            id=okr_id,
             objective=objective,
-            clarity=heur['clarity'], 
-            focus=heur['focus'], 
+            clarity=heur['clarity'],
+            focus=heur['focus'],
             writing=heur['writing'],
-            score=heur['total'], 
+            score=heur['total'],
             feedback=fb
         ))
         db.commit()
-    
-    # 🔥 DEVOLVER RESPUESTA PARA FRONTEND + DATOS LEGACY
-    return {
-        # Datos para el frontend React (nueva UI)
-        "score": ai_evaluation["score"],
-        "feedback": ai_evaluation["feedback"],
-        "criteria": ai_evaluation["criteria"],
-        "suggestions": ai_evaluation["suggestions"],
+
+    # 🔥 DEVOLVER EXACTAMENTE LO QUE NECESITA EL FRONTEND
+    result = {
+        # Datos principales del JSON de IA
+        "score": ai_data["score"],
+        "feedback": ai_data["feedback"],
+        "criteria": ai_data["criteria"],
+        "suggestions": ai_data["suggestions"],
         
-        # Datos legacy para compatibilidad (si otros servicios los usan)
+        # Debug info
+        "debug_ai_response": ai_response,
+        "debug_parsed": ai_data,
+        
+        # Legacy data
         "okr_id": okr_id,
         "breakdown": {
-            "clarity": heur["clarity"], 
-            "focus": heur["focus"], 
+            "clarity": heur["clarity"],
+            "focus": heur["focus"],
             "writing": heur["writing"]
         },
         "can_add_krs": heur["total"] >= 7.5
     }
+    
+    print(f"🎯 RESULTADO FINAL - score: {result['score']}")
+    print(f"🎯 RESULTADO FINAL - feedback: {result['feedback'][:100]}...")
+    print(f"🎯 RESULTADO FINAL - criteria keys: {list(result['criteria'].keys())}")
+    print(f"🎯 RESULTADO FINAL - suggestions count: {len(result['suggestions'])}")
+    
+    return result
 
 async def evaluate_kr(okr_id: str, kr_definition: str, target_value: str, target_date: str):
     # Mantener funcionalidad existente de KR sin cambios

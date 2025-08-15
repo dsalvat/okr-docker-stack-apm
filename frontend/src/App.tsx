@@ -19,6 +19,9 @@ interface OKRResponse {
   feedback: string;
   criteria: CriteriaDetail;
   suggestions: string[];
+  // 🔥 AÑADIR CAMPOS DEBUG
+  debug_ai_response?: string;
+  debug_parsed?: any;
 }
 
 function App(): JSX.Element {
@@ -49,23 +52,11 @@ function App(): JSX.Element {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
-      const result: OKRResponse = await response.json()
+      const result = await response.json()
       
-      // 🔥 DEBUG: Ver qué está llegando del backend
-      console.log("DEBUG - Respuesta completa del backend:", result)
-      console.log("DEBUG - Tiene criterios?", result.criteria ? "SÍ" : "NO")
-      console.log("DEBUG - Tiene sugerencias?", result.suggestions ? "SÍ" : "NO")
-      console.log("DEBUG - Criterios recibidos:", result.criteria)
-      console.log("DEBUG - Sugerencias recibidas:", result.suggestions)
-      
-      // Si la respuesta viene como string JSON, parsearlo
-      let parsedResult = result;
-      if (typeof result === 'string') {
-        parsedResult = JSON.parse(result);
-        console.log("DEBUG - Resultado parseado:", parsedResult)
-      }
-      
-      setEvaluation(parsedResult)
+      // El backend devuelve el JSON del modelo directamente
+      // Solo necesitamos asignarlo y mostrarlo
+      setEvaluation(result)
     } catch (err) {
       console.error('Error evaluating OKR:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
@@ -135,6 +126,32 @@ function App(): JSX.Element {
 
         {evaluation && (
           <div className="evaluation-result">
+            {/* 🔥 DEBUG PANEL - RESPUESTA CRUDA DEL MODELO */}
+            {evaluation.debug_ai_response && (
+              <div className="debug-panel">
+                <details>
+                  <summary style={{cursor: 'pointer', padding: '10px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', marginBottom: '20px'}}>
+                    🔍 DEBUG: Ver respuesta cruda del modelo (click para expandir)
+                  </summary>
+                  <div style={{background: '#f9fafb', padding: '15px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '20px'}}>
+                    <h5>Respuesta original de la IA:</h5>
+                    <pre style={{background: '#fff', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', overflow: 'auto', maxHeight: '300px'}}>
+                      {evaluation.debug_ai_response}
+                    </pre>
+                    
+                    {evaluation.debug_parsed && (
+                      <>
+                        <h5 style={{marginTop: '15px'}}>JSON parseado:</h5>
+                        <pre style={{background: '#fff', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '12px', overflow: 'auto', maxHeight: '200px'}}>
+                          {JSON.stringify(evaluation.debug_parsed, null, 2)}
+                        </pre>
+                      </>
+                    )}
+                  </div>
+                </details>
+              </div>
+            )}
+
             <h3>Resultado de la Evaluación</h3>
             
             <div className="score-container">
@@ -196,8 +213,8 @@ function App(): JSX.Element {
                 </div>
               </div>
             ) : (
-              <div style={{background: '#fee', padding: '10px', border: '1px solid #f88'}}>
-                DEBUG: No se recibieron criterios SMART
+              <div style={{background: '#fee', padding: '10px', border: '1px solid #f88', borderRadius: '4px', marginBottom: '20px'}}>
+                ⚠️ No se recibieron criterios SMART del backend
               </div>
             )}
 
@@ -212,8 +229,8 @@ function App(): JSX.Element {
                 </ul>
               </div>
             ) : (
-              <div style={{background: '#ffe', padding: '10px', border: '1px solid #ff8'}}>
-                DEBUG: No se recibieron sugerencias
+              <div style={{background: '#ffe', padding: '10px', border: '1px solid #ff8', borderRadius: '4px'}}>
+                ⚠️ No se recibieron sugerencias del backend
               </div>
             )}
           </div>
