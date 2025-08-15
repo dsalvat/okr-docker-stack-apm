@@ -1,10 +1,24 @@
 import React, { useState } from 'react'
 import './App.css'
 
+interface CriteriaScore {
+  score: number;
+  comment: string;
+}
+
+interface CriteriaDetail {
+  specific: CriteriaScore;
+  measurable: CriteriaScore;
+  achievable: CriteriaScore;
+  relevant: CriteriaScore;
+  timebound: CriteriaScore;
+}
+
 interface OKRResponse {
   score: number;
   feedback: string;
-  suggestions?: string[];
+  criteria: CriteriaDetail;
+  suggestions: string[];
 }
 
 function App(): JSX.Element {
@@ -36,7 +50,22 @@ function App(): JSX.Element {
       }
 
       const result: OKRResponse = await response.json()
-      setEvaluation(result)
+      
+      // 🔥 DEBUG: Ver qué está llegando del backend
+      console.log("DEBUG - Respuesta completa del backend:", result)
+      console.log("DEBUG - Tiene criterios?", result.criteria ? "SÍ" : "NO")
+      console.log("DEBUG - Tiene sugerencias?", result.suggestions ? "SÍ" : "NO")
+      console.log("DEBUG - Criterios recibidos:", result.criteria)
+      console.log("DEBUG - Sugerencias recibidas:", result.suggestions)
+      
+      // Si la respuesta viene como string JSON, parsearlo
+      let parsedResult = result;
+      if (typeof result === 'string') {
+        parsedResult = JSON.parse(result);
+        console.log("DEBUG - Resultado parseado:", parsedResult)
+      }
+      
+      setEvaluation(parsedResult)
     } catch (err) {
       console.error('Error evaluating OKR:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
@@ -116,11 +145,64 @@ function App(): JSX.Element {
             </div>
 
             <div className="feedback">
-              <h4>Feedback:</h4>
-              <p>{evaluation.feedback}</p>
+              <h4>Evaluación General:</h4>
+              <p className="feedback-general">{evaluation.feedback}</p>
             </div>
 
-            {evaluation.suggestions && evaluation.suggestions.length > 0 && (
+            {/* 🔥 DEBUG: Mostrar si tenemos criterios */}
+            {evaluation.criteria ? (
+              <div className="criteria-section">
+                <h4>Análisis SMART:</h4>
+                <div className="criteria-grid">
+                  <div className="criteria-item">
+                    <div className="criteria-header">
+                      <span className="criteria-name">Específico</span>
+                      <span className="criteria-score">{evaluation.criteria.specific?.score || 0}/10</span>
+                    </div>
+                    <p className="criteria-comment">{evaluation.criteria.specific?.comment || "Sin comentario"}</p>
+                  </div>
+                  
+                  <div className="criteria-item">
+                    <div className="criteria-header">
+                      <span className="criteria-name">Medible</span>
+                      <span className="criteria-score">{evaluation.criteria.measurable?.score || 0}/10</span>
+                    </div>
+                    <p className="criteria-comment">{evaluation.criteria.measurable?.comment || "Sin comentario"}</p>
+                  </div>
+                  
+                  <div className="criteria-item">
+                    <div className="criteria-header">
+                      <span className="criteria-name">Alcanzable</span>
+                      <span className="criteria-score">{evaluation.criteria.achievable?.score || 0}/10</span>
+                    </div>
+                    <p className="criteria-comment">{evaluation.criteria.achievable?.comment || "Sin comentario"}</p>
+                  </div>
+                  
+                  <div className="criteria-item">
+                    <div className="criteria-header">
+                      <span className="criteria-name">Relevante</span>
+                      <span className="criteria-score">{evaluation.criteria.relevant?.score || 0}/10</span>
+                    </div>
+                    <p className="criteria-comment">{evaluation.criteria.relevant?.comment || "Sin comentario"}</p>
+                  </div>
+                  
+                  <div className="criteria-item">
+                    <div className="criteria-header">
+                      <span className="criteria-name">Temporal</span>
+                      <span className="criteria-score">{evaluation.criteria.timebound?.score || 0}/10</span>
+                    </div>
+                    <p className="criteria-comment">{evaluation.criteria.timebound?.comment || "Sin comentario"}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{background: '#fee', padding: '10px', border: '1px solid #f88'}}>
+                DEBUG: No se recibieron criterios SMART
+              </div>
+            )}
+
+            {/* 🔥 DEBUG: Mostrar si tenemos sugerencias */}
+            {evaluation.suggestions && evaluation.suggestions.length > 0 ? (
               <div className="suggestions">
                 <h4>Sugerencias de mejora:</h4>
                 <ul>
@@ -128,6 +210,10 @@ function App(): JSX.Element {
                     <li key={index}>{suggestion}</li>
                   ))}
                 </ul>
+              </div>
+            ) : (
+              <div style={{background: '#ffe', padding: '10px', border: '1px solid #ff8'}}>
+                DEBUG: No se recibieron sugerencias
               </div>
             )}
           </div>
