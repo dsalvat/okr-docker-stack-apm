@@ -5,8 +5,47 @@ from app.db.session import SessionLocal
 from app.db.models import OkrSubmission, KeyResult
 
 async def evaluate_objective(objective: str):
-    heur = score_objective(objective)
-    fb = await llm_feedback(f"Avalua OBJECTIU d'OKR i proposa millores. Text: '{objective}'. Notes: {', '.join(heur['notes']) or 'Sense notes'}")
+    prompt = f"""
+        Evalúa este OKR usando el framework SMART: "{objective}"
+
+        Responde ÚNICAMENTE en formato JSON válido:
+        {{
+            "score": [número del 1-10],
+            "feedback": "Evaluación general en máximo 3 líneas",
+            "criteria": {{
+                "specific": {{
+                    "score": [1-10],
+                    "comment": "Análisis de especificidad (máximo 25 palabras)"
+                }},
+                "measurable": {{
+                    "score": [1-10], 
+                    "comment": "Análisis de medibilidad (máximo 25 palabras)"
+                }},
+                "achievable": {{
+                    "score": [1-10],
+                    "comment": "Análisis de factibilidad (máximo 25 palabras)"
+                }},
+                "relevant": {{
+                    "score": [1-10],
+                    "comment": "Análisis de relevancia (máximo 25 palabras)"
+                }},
+                "timebound": {{
+                    "score": [1-10],
+                    "comment": "Análisis temporal (máximo 25 palabras)"
+                }}
+            }},
+            "suggestions": [
+                "Sugerencia específica 1",
+                "Sugerencia específica 2", 
+                "Sugerencia específica 3"
+            ]
+        }}
+
+        IMPORTANTE: Responde SOLO el JSON, sin texto adicional. Sé crítico pero constructivo.
+        """
+
+    heur = score_objective(prompt)
+    fb = await llm_feedback(f"Avalua OBJECTIU d'OKR i proposa millores. Text: '{prompt}'. Notes: {', '.join(heur['notes']) or 'Sense notes'}")
     okr_id = str(uuid.uuid4())
     with SessionLocal() as db:
         db.add(OkrSubmission(
